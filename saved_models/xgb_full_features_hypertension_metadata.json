@@ -1,0 +1,46 @@
+{
+    "model_name": "XGBoost_FullFeatures_Hypertension",
+    "target_variable": "Hypertension",
+    "model_type": "XGBoostClassifier",
+    "feature_set_used": "Full Features",
+    "numeric_features": [
+        "AGE_AT_INDEX",
+        "AVG_HEIGHT",
+        "AVG_BMI",
+        "AVG_WEIGHT",
+        "AVG_DIASTOLIC_BP",
+        "AVG_GLUCOSE",
+        "AVG_SYSTOLIC_BP",
+        "AVG_CHOLESTEROL",
+        "OBSERVATION_COUNT",
+        "DISTINCT_CONDITION_COUNT",
+        "DISTINCT_MEDICATION_COUNT",
+        "TOTAL_ENCOUNTERS",
+        "HAS_GLUCOSE_READING",
+        "HAS_CHOLESTEROL_READING"
+    ],
+    "categorical_features": [
+        "GENDER",
+        "RACE",
+        "ETHNICITY",
+        "MARITAL"
+    ],
+    "pipeline_steps": [
+        "preprocessor",
+        "classifier"
+    ],
+    "training_metrics": {
+        "Target": "Hypertension",
+        "Feature_Set": "Full Features",
+        "Model": "XGBoost",
+        "ROC-AUC": 0.9943,
+        "PR-AUC": 0.9863,
+        "Lift": 3.9,
+        "Optimal_F1_Score": 0.934,
+        "Optimal_Threshold": 0.7089999914169312,
+        "Train_Accuracy": 0.9696,
+        "Test_Accuracy": 0.9664,
+        "Train_ROC-AUC": 0.9956
+    },
+    "description": "XGBoost model predicting Hypertension using the full feature set (including count features)."
+}

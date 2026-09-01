@@ -1,0 +1,46 @@
+{
+    "model_name": "XGBoost_FullFeatures_Stroke",
+    "target_variable": "Stroke",
+    "model_type": "XGBoostClassifier",
+    "feature_set_used": "Full Features",
+    "numeric_features": [
+        "AGE_AT_INDEX",
+        "AVG_HEIGHT",
+        "AVG_BMI",
+        "AVG_WEIGHT",
+        "AVG_DIASTOLIC_BP",
+        "AVG_GLUCOSE",
+        "AVG_SYSTOLIC_BP",
+        "AVG_CHOLESTEROL",
+        "OBSERVATION_COUNT",
+        "DISTINCT_CONDITION_COUNT",
+        "DISTINCT_MEDICATION_COUNT",
+        "TOTAL_ENCOUNTERS",
+        "HAS_GLUCOSE_READING",
+        "HAS_CHOLESTEROL_READING"
+    ],
+    "categorical_features": [
+        "GENDER",
+        "RACE",
+        "ETHNICITY",
+        "MARITAL"
+    ],
+    "pipeline_steps": [
+        "preprocessor",
+        "classifier"
+    ],
+    "training_metrics": {
+        "Target": "Stroke",
+        "Feature_Set": "Full Features",
+        "Model": "XGBoost",
+        "ROC-AUC": 0.8872,
+        "PR-AUC": 0.2948,
+        "Lift": 5.7,
+        "Optimal_F1_Score": 0.39,
+        "Optimal_Threshold": 0.8389999866485596,
+        "Train_Accuracy": 0.9197,
+        "Test_Accuracy": 0.9223,
+        "Train_ROC-AUC": 0.913
+    },
+    "description": "XGBoost model predicting Stroke using the full feature set (including count features)."
+}

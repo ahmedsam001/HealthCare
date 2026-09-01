@@ -1,0 +1,46 @@
+{
+    "model_name": "XGBoost_FullFeatures_Coronary Heart Disease",
+    "target_variable": "Coronary Heart Disease",
+    "model_type": "XGBoostClassifier",
+    "feature_set_used": "Full Features",
+    "numeric_features": [
+        "AGE_AT_INDEX",
+        "AVG_HEIGHT",
+        "AVG_BMI",
+        "AVG_WEIGHT",
+        "AVG_DIASTOLIC_BP",
+        "AVG_GLUCOSE",
+        "AVG_SYSTOLIC_BP",
+        "AVG_CHOLESTEROL",
+        "OBSERVATION_COUNT",
+        "DISTINCT_CONDITION_COUNT",
+        "DISTINCT_MEDICATION_COUNT",
+        "TOTAL_ENCOUNTERS",
+        "HAS_GLUCOSE_READING",
+        "HAS_CHOLESTEROL_READING"
+    ],
+    "categorical_features": [
+        "GENDER",
+        "RACE",
+        "ETHNICITY",
+        "MARITAL"
+    ],
+    "pipeline_steps": [
+        "preprocessor",
+        "classifier"
+    ],
+    "training_metrics": {
+        "Target": "Coronary Heart Disease",
+        "Feature_Set": "Full Features",
+        "Model": "XGBoost",
+        "ROC-AUC": 0.8806,
+        "PR-AUC": 0.4406,
+        "Lift": 6.2,
+        "Optimal_F1_Score": 0.442,
+        "Optimal_Threshold": 0.8029999732971191,
+        "Train_Accuracy": 0.9124,
+        "Test_Accuracy": 0.9125,
+        "Train_ROC-AUC": 0.9113
+    },
+    "description": "XGBoost model predicting Coronary Heart Disease using the full feature set (including count features)."
+}

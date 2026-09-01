@@ -1,0 +1,46 @@
+{
+    "model_name": "XGBoost_FullFeatures_Diabetes",
+    "target_variable": "Diabetes",
+    "model_type": "XGBoostClassifier",
+    "feature_set_used": "Full Features",
+    "numeric_features": [
+        "AGE_AT_INDEX",
+        "AVG_HEIGHT",
+        "AVG_BMI",
+        "AVG_WEIGHT",
+        "AVG_DIASTOLIC_BP",
+        "AVG_GLUCOSE",
+        "AVG_SYSTOLIC_BP",
+        "AVG_CHOLESTEROL",
+        "OBSERVATION_COUNT",
+        "DISTINCT_CONDITION_COUNT",
+        "DISTINCT_MEDICATION_COUNT",
+        "TOTAL_ENCOUNTERS",
+        "HAS_GLUCOSE_READING",
+        "HAS_CHOLESTEROL_READING"
+    ],
+    "categorical_features": [
+        "GENDER",
+        "RACE",
+        "ETHNICITY",
+        "MARITAL"
+    ],
+    "pipeline_steps": [
+        "preprocessor",
+        "classifier"
+    ],
+    "training_metrics": {
+        "Target": "Diabetes",
+        "Feature_Set": "Full Features",
+        "Model": "XGBoost",
+        "ROC-AUC": 0.9466,
+        "PR-AUC": 0.507,
+        "Lift": 8.3,
+        "Optimal_F1_Score": 0.56,
+        "Optimal_Threshold": 0.8360000252723694,
+        "Train_Accuracy": 0.9232,
+        "Test_Accuracy": 0.9237,
+        "Train_ROC-AUC": 0.958
+    },
+    "description": "XGBoost model predicting Diabetes using the full feature set (including count features)."
+}
