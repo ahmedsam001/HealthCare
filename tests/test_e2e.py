@@ -17,16 +17,19 @@
 #   T13  Updated risk dict has correct structure
 #
 # Run:
-#   cd realtime/
-#   python test_e2e.py
+#   python tests/test_e2e.py
 """
 
 from __future__ import annotations
 
+import os
 import sys
 import traceback
 from datetime import date
 from typing import Any, Optional
+
+# Allow direct import from realtime/
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "realtime"))
 
 # ---------------------------------------------------------------------------
 # Test harness

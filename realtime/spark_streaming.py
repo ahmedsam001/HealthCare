@@ -14,8 +14,8 @@
 #       ↓
 #   Write to Snowflake REALTIME.RT_<TYPE> (append mode, foreachBatch)
 #
-# The same Spark-Snowflake connector used in 01_Bronze / 02_Silver / 03_Gold
-# is reused here (net.snowflake:spark-snowflake_2.13:3.2.1-spark_4.0).
+# The Spark-Snowflake connector for PySpark 3.5:
+# net.snowflake:spark-snowflake_2.12:3.2.1-spark_3.5
 #
 # Run:
 #   python spark_streaming.py

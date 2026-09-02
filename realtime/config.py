@@ -41,7 +41,7 @@ KAFKA_TOPIC             = os.getenv("KAFKA_TOPIC",             "medical-events")
 # ---------------------------------------------------------------------------
 import pathlib
 _BASE = pathlib.Path(__file__).parent.parent  # NTI Prolect/
-MODEL_DIR = pathlib.Path(os.getenv("MODEL_DIR", str(_BASE / "saved_models")))
+MODEL_DIR = pathlib.Path(os.getenv("MODEL_DIR", str(_BASE / "models")))
 
 # ---------------------------------------------------------------------------
 # Supported targets and their model file names
@@ -58,8 +58,14 @@ TARGETS = [
 
 def model_path(target_name: str) -> pathlib.Path:
     """Return the expected .joblib path for a given target name."""
-    fname = f"xgb_full_features_{target_name.lower().replace(' ', '_')}.joblib"
-    return MODEL_DIR / fname
+    subdir = target_name.lower().replace(' ', '_')
+    return MODEL_DIR / subdir / "model.joblib"
+
+
+def model_metadata_path(target_name: str) -> pathlib.Path:
+    """Return the expected metadata.json path for a given target name."""
+    subdir = target_name.lower().replace(' ', '_')
+    return MODEL_DIR / subdir / "metadata.json"
 
 
 def snowflake_connect_kwargs() -> dict:

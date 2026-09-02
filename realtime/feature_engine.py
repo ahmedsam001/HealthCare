@@ -83,44 +83,59 @@ FEATURE_TO_MEASUREMENT = {
 }
 
 
+def _sum_count(conn, sql: str, params=()) -> tuple[float, int]:
+    """Execute SQL that returns (SUM, COUNT) and return as (float, int)."""
+    cur = conn.cursor()
+    cur.execute(sql, params)
+    row = cur.fetchone()
+    cur.close()
+    if row is None:
+        return 0.0, 0
+    s = float(row[0]) if row[0] is not None else 0.0
+    c = int(row[1]) if row[1] is not None else 0
+    return s, c
+
+
 def _avg_from_gold_and_rt(
     conn, patient_id: str, feature_name: str
 ) -> Optional[float]:
     """
-    Average a vital measurement across both OBSERVATIONS_GOLD (pivoted)
-    and RT_OBSERVATIONS (long).
+    Compute the TRUE average of a vital measurement across OBSERVATIONS_GOLD
+    (pivoted columns) and RT_OBSERVATIONS (long format).
 
-    OBSERVATIONS_GOLD stores values as VARCHAR (may be "Not Recorded").
-    Cast safely with TRY_CAST.
+    Uses SUM + COUNT from each source to produce a properly weighted combined
+    average: (hist_sum + rt_sum) / (hist_count + rt_count).
     """
     measurement = FEATURE_TO_MEASUREMENT[feature_name]
     gold_col    = MEASUREMENT_TO_GOLD_COL[measurement]
 
-    # Historical average from pivoted Gold table
+    # Historical SUM and COUNT from pivoted Gold table
     sql_hist = f"""
-        SELECT AVG(TRY_CAST({gold_col} AS FLOAT))
+        SELECT SUM(TRY_CAST({gold_col} AS FLOAT)),
+               COUNT(TRY_CAST({gold_col} AS FLOAT))
         FROM {SCHEMA_GOLD}.OBSERVATIONS_GOLD
         WHERE PATIENT_ID = %s
           AND {gold_col} != 'Not Recorded'
+          AND TRY_CAST({gold_col} AS FLOAT) IS NOT NULL
     """
 
-    # Real-time average from long RT table
+    # Real-time SUM and COUNT from long RT table
     sql_rt = """
-        SELECT AVG(VALUE_NUMERIC)
+        SELECT SUM(VALUE_NUMERIC), COUNT(VALUE_NUMERIC)
         FROM REALTIME.RT_OBSERVATIONS
         WHERE PATIENT_ID = %s
           AND UPPER(DESCRIPTION) = UPPER(%s)
           AND VALUE_NUMERIC IS NOT NULL
     """
 
-    hist_avg = _scalar(conn, sql_hist, (patient_id,))
-    rt_avg   = _scalar(conn, sql_rt,   (patient_id, measurement))
+    hist_sum, hist_count = _sum_count(conn, sql_hist, (patient_id,))
+    rt_sum,   rt_count   = _sum_count(conn, sql_rt,   (patient_id, measurement))
 
-    # Combine: weighted average if both sources have data
-    vals = [v for v in [hist_avg, rt_avg] if v is not None]
-    if not vals:
+    total_count = hist_count + rt_count
+    if total_count == 0:
         return None
-    return float(np.mean(vals))
+
+    return (hist_sum + rt_sum) / total_count
 
 
 def _has_reading_flag(conn, patient_id: str, measurement: str) -> int:
