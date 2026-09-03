@@ -1,16 +1,11 @@
-
-from __future__ import annotations
-
 import uuid
 from datetime import datetime, timezone
-from typing import Any
-
 
 # ---------------------------------------------------------------------------
 # Supported event types (must match Gold entity names)
 # ---------------------------------------------------------------------------
 
-SUPPORTED_EVENT_TYPES: tuple[str, ...] = (
+SUPPORTED_EVENT_TYPES = [
     "ENCOUNTER",
     "OBSERVATION",
     "CONDITION",
@@ -19,14 +14,14 @@ SUPPORTED_EVENT_TYPES: tuple[str, ...] = (
     "IMMUNIZATION",
     "ALLERGY",
     "CAREPLAN",
-)
+]
 
 # ---------------------------------------------------------------------------
 # Minimum required payload fields per event type
 # Field names match the Gold-layer column names from 03_Gold.ipynb
 # ---------------------------------------------------------------------------
 
-REQUIRED_PAYLOAD_FIELDS: dict[str, list[str]] = {
+REQUIRED_PAYLOAD_FIELDS = {
     "ENCOUNTER": [
         "CODE",
         "DESCRIPTION",
@@ -70,7 +65,7 @@ REQUIRED_PAYLOAD_FIELDS: dict[str, list[str]] = {
 }
 
 # Optional / nullable fields with sensible defaults applied during validation
-OPTIONAL_PAYLOAD_DEFAULTS: dict[str, dict[str, Any]] = {
+OPTIONAL_PAYLOAD_DEFAULTS = {
     "ENCOUNTER": {
         "REASONCODE": "N/A",
         "REASONDESCRIPTION": "Routine / Unspecified",
@@ -115,20 +110,13 @@ OPTIONAL_PAYLOAD_DEFAULTS: dict[str, dict[str, Any]] = {
 
 
 # ---------------------------------------------------------------------------
-# Event dataclass
+# Event class
 # ---------------------------------------------------------------------------
 
 class MedicalEvent:
     """Standardized envelope for a new real-time medical event."""
     
-    def __init__(
-        self, 
-        patient_id: str, 
-        event_type: str, 
-        payload: dict, 
-        event_id: str = "", 
-        event_timestamp: str = ""
-    ):
+    def __init__(self, patient_id, event_type, payload, event_id="", event_timestamp=""):
         self.patient_id = patient_id
         self.event_type = event_type
         self.payload = payload
@@ -145,7 +133,7 @@ class MedicalEvent:
         else:
             self.event_timestamp = event_timestamp
 
-    def to_dict(self) -> dict:  #convert object to dictionary
+    def to_dict(self):
         """Serialize the event to a plain dict (JSON-serializable)."""
         return {
             "event_id":        self.event_id,
@@ -156,7 +144,7 @@ class MedicalEvent:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> "MedicalEvent":
+    def from_dict(cls, d):
         """Deserialize from a plain dict (e.g. from a Kafka message)."""
         return cls(
             patient_id      = d["patient_id"],
@@ -175,7 +163,7 @@ class ValidationError(ValueError):
     """Raised when a MedicalEvent fails schema validation."""
 
 
-def validate_event(event: MedicalEvent, *, fill_defaults: bool = True) -> MedicalEvent:
+def validate_event(event, fill_defaults=True):
     # 1. event_type check
     if event.event_type not in SUPPORTED_EVENT_TYPES:
         raise ValidationError(
@@ -184,7 +172,7 @@ def validate_event(event: MedicalEvent, *, fill_defaults: bool = True) -> Medica
         )
 
     # 2. patient_id presence
-    if not event.patient_id or not event.patient_id.strip():
+    if not event.patient_id or not str(event.patient_id).strip():
         raise ValidationError("patient_id must be a non-empty string.")
 
     # 3. Required payload fields
@@ -243,14 +231,7 @@ def validate_event(event: MedicalEvent, *, fill_defaults: bool = True) -> Medica
     return event
 
 
-def make_observation_event(
-    patient_id: str,
-    description: str,
-    observation_date: str,
-    value_numeric: float | None = None,
-    value_text: str | None = None,
-    encounter_id: str | None = None,
-) -> MedicalEvent:
+def make_observation_event(patient_id, description, observation_date, value_numeric=None, value_text=None, encounter_id=None):
     """Convenience constructor for OBSERVATION events."""
     return MedicalEvent(
         patient_id=patient_id,
