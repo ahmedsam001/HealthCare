@@ -42,7 +42,7 @@ SKIP = "⚫ SKIP"
 results: list[tuple[str, str, str]] = []
 
 
-def test(name: str, fn):
+def run_test(name: str, fn):
     """Run fn(); record PASS/FAIL/SKIP."""
     try:
         result = fn()
@@ -346,7 +346,7 @@ def main():
     ]
 
     for name, fn in tests:
-        test(name, fn)
+        run_test(name, fn)
 
     # Summary
     print("\n" + "=" * 65)
