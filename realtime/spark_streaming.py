@@ -21,7 +21,6 @@
 #   python spark_streaming.py
 """
 
-from __future__ import annotations
 
 import json
 import os
@@ -36,7 +35,7 @@ os.environ["PYSPARK_SUBMIT_ARGS"] = (
     "pyspark-shell"
 )
 
-from pyspark.sql import SparkSession, DataFrame
+from pyspark.sql import SparkSession
 from pyspark.sql.functions import (
     col, from_json, get_json_object, lit, current_timestamp,
     coalesce, to_timestamp, to_date, expr
@@ -90,7 +89,7 @@ SUPPORTED_TYPES = {
 # Spark session
 # ---------------------------------------------------------------------------
 
-def create_spark() -> SparkSession:
+def create_spark():
     return (
         SparkSession.builder
         .appName("HealthcareRealTimeStreaming")
@@ -102,7 +101,7 @@ def create_spark() -> SparkSession:
 # Write helpers
 # ---------------------------------------------------------------------------
 
-def _write_to_snowflake(df: DataFrame, table_name: str) -> None:
+def _write_to_snowflake(df, table_name):
     """Append a micro-batch DataFrame to a REALTIME Snowflake table."""
     if df.isEmpty():
         return
@@ -122,7 +121,7 @@ def _write_to_snowflake(df: DataFrame, table_name: str) -> None:
 # typed DataFrame ready for Snowflake.
 # ---------------------------------------------------------------------------
 
-def _parse_encounters(df: DataFrame) -> DataFrame:
+def _parse_encounters(df):
     return df.select(
         col("event_id"),
         col("patient_id"),
@@ -146,7 +145,7 @@ def _parse_encounters(df: DataFrame) -> DataFrame:
     ).filter(col("CODE").isNotNull())
 
 
-def _parse_observations(df: DataFrame) -> DataFrame:
+def _parse_observations(df):
     return df.select(
         col("event_id"),
         col("patient_id"),
@@ -164,7 +163,7 @@ def _parse_observations(df: DataFrame) -> DataFrame:
     ).filter(col("DESCRIPTION").isNotNull())
 
 
-def _parse_conditions(df: DataFrame) -> DataFrame:
+def _parse_conditions(df):
     return df.select(
         col("event_id"),
         col("patient_id"),
@@ -182,7 +181,7 @@ def _parse_conditions(df: DataFrame) -> DataFrame:
     ).filter(col("CODE").isNotNull())
 
 
-def _parse_medications(df: DataFrame) -> DataFrame:
+def _parse_medications(df):
     return df.select(
         col("event_id"),
         col("patient_id"),
@@ -206,7 +205,7 @@ def _parse_medications(df: DataFrame) -> DataFrame:
     ).filter(col("CODE").isNotNull())
 
 
-def _parse_procedures(df: DataFrame) -> DataFrame:
+def _parse_procedures(df):
     return df.select(
         col("event_id"),
         col("patient_id"),
@@ -226,7 +225,7 @@ def _parse_procedures(df: DataFrame) -> DataFrame:
     ).filter(col("CODE").isNotNull())
 
 
-def _parse_immunizations(df: DataFrame) -> DataFrame:
+def _parse_immunizations(df):
     return df.select(
         col("event_id"),
         col("patient_id"),
@@ -240,7 +239,7 @@ def _parse_immunizations(df: DataFrame) -> DataFrame:
     ).filter(col("CODE").isNotNull())
 
 
-def _parse_allergies(df: DataFrame) -> DataFrame:
+def _parse_allergies(df):
     return df.select(
         col("event_id"),
         col("patient_id"),
@@ -258,7 +257,7 @@ def _parse_allergies(df: DataFrame) -> DataFrame:
     ).filter(col("CODE").isNotNull())
 
 
-def _parse_careplans(df: DataFrame) -> DataFrame:
+def _parse_careplans(df):
     return df.select(
         col("event_id"),
         coalesce(
@@ -286,7 +285,7 @@ def _parse_careplans(df: DataFrame) -> DataFrame:
     ).filter(col("CODE").isNotNull())
 
 
-def _process_batch(batch_df: DataFrame, batch_id: int) -> None:
+def _process_batch(batch_df, batch_id):
     """
     Process one micro-batch from Kafka.
     Splits by event_type and writes each subset to the matching RT_ table.
@@ -360,7 +359,7 @@ def _process_batch(batch_df: DataFrame, batch_id: int) -> None:
 # Main streaming job
 # ---------------------------------------------------------------------------
 
-def run_streaming() -> None:
+def run_streaming():
     """Start and block on the Spark Structured Streaming job."""
     spark = create_spark()
     print(f"[Streaming] Spark {spark.version} started.")
