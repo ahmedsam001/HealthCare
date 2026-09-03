@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
@@ -119,25 +118,34 @@ OPTIONAL_PAYLOAD_DEFAULTS: dict[str, dict[str, Any]] = {
 # Event dataclass
 # ---------------------------------------------------------------------------
 
-@dataclass
 class MedicalEvent:
     """Standardized envelope for a new real-time medical event."""
-    patient_id: str
-    event_type: str
-    payload: dict[str, Any]
-    event_id: str = ""
-    event_timestamp: str = ""
-
-    def __post_init__(self):
+    
+    def __init__(
+        self, 
+        patient_id: str, 
+        event_type: str, 
+        payload: dict, 
+        event_id: str = "", 
+        event_timestamp: str = ""
+    ):
+        self.patient_id = patient_id
+        self.event_type = event_type
+        self.payload = payload
+        
         # Automatically generate an ID if not provided
-        if not self.event_id:
+        if event_id == "":
             self.event_id = str(uuid.uuid4())
+        else:
+            self.event_id = event_id
             
         # Automatically set the current time if not provided
-        if not self.event_timestamp:
+        if event_timestamp == "":
             self.event_timestamp = datetime.now(timezone.utc).isoformat()
+        else:
+            self.event_timestamp = event_timestamp
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict:  #convert object to dictionary
         """Serialize the event to a plain dict (JSON-serializable)."""
         return {
             "event_id":        self.event_id,
@@ -168,23 +176,6 @@ class ValidationError(ValueError):
 
 
 def validate_event(event: MedicalEvent, *, fill_defaults: bool = True) -> MedicalEvent:
-    """
-    Validate a MedicalEvent and optionally fill in default payload fields.
-
-    Parameters
-    ----------
-    event          : the event to validate
-    fill_defaults  : if True, missing optional fields are filled with their
-                     default values before returning
-
-    Returns
-    -------
-    The validated (and optionally default-filled) MedicalEvent.
-
-    Raises
-    ------
-    ValidationError if any required field is missing or invalid.
-    """
     # 1. event_type check
     if event.event_type not in SUPPORTED_EVENT_TYPES:
         raise ValidationError(
@@ -197,13 +188,24 @@ def validate_event(event: MedicalEvent, *, fill_defaults: bool = True) -> Medica
         raise ValidationError("patient_id must be a non-empty string.")
 
     # 3. Required payload fields
-    required = REQUIRED_PAYLOAD_FIELDS.get(event.event_type, [])
-    missing = [f for f in required if f not in event.payload or
-               event.payload[f] is None or str(event.payload[f]).strip() == ""]
-    if missing:
+    required_fields = REQUIRED_PAYLOAD_FIELDS.get(event.event_type, [])
+    missing_fields = []
+    
+    for field_name in required_fields:
+        # Check if field is completely missing
+        if field_name not in event.payload:
+            missing_fields.append(field_name)
+        # Check if field is explicitly set to None
+        elif event.payload[field_name] is None:
+            missing_fields.append(field_name)
+        # Check if field is an empty string
+        elif str(event.payload[field_name]).strip() == "":
+            missing_fields.append(field_name)
+
+    if len(missing_fields) > 0:
         raise ValidationError(
             f"Event type '{event.event_type}' is missing required payload "
-            f"fields: {missing}"
+            f"fields: {missing_fields}"
         )
 
     # 4. OBSERVATION-specific: at least one value must be provided
