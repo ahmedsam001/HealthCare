@@ -12,19 +12,14 @@
 # DO NOT retrain here.
 """
 
-from __future__ import annotations
-
-from typing import Optional
-
 from feature_engine import compute_features
 from ml_contract import TARGETS, run_all_targets
-
 
 # ---------------------------------------------------------------------------
 # Risk labels for UI display
 # ---------------------------------------------------------------------------
 
-def _risk_label(prob: Optional[float]) -> str:
+def _risk_label(prob):
     if prob is None:
         return "Model Unavailable"
     if prob >= 0.7:
@@ -34,7 +29,7 @@ def _risk_label(prob: Optional[float]) -> str:
     return "🟢 Low Risk"
 
 
-def _risk_color(prob: Optional[float]) -> str:
+def _risk_color(prob):
     if prob is None:
         return "gray"
     if prob >= 0.7:
@@ -48,27 +43,10 @@ def _risk_color(prob: Optional[float]) -> str:
 # STEP 10: Main inference function
 # ---------------------------------------------------------------------------
 
-def compute_risk(patient_id: str) -> dict:
+def compute_risk(patient_id):
     """
     Compute updated risk scores for all 5 targets for a given patient.
-
-    Steps:
-      1. Recompute features from GOLD UNION REALTIME (feature_engine).
-      2. Pass features through each saved XGBoost pipeline (ml_contract).
-      3. Return structured results.
-
-    Returns
-    -------
-    dict with keys:
-      "patient_id"   : str
-      "features"     : dict (all feature values used)
-      "scores"       : dict { target_name -> {
-                           "probability": float or None,
-                           "label": str,
-                           "color": str,
-                       }}
-      "models_found" : list[str] — which targets had model files
-      "models_missing": list[str]
+    Returns a dictionary of risk information.
     """
     # Step 1 — Updated features
     features = compute_features(patient_id)
@@ -80,6 +58,7 @@ def compute_risk(patient_id: str) -> dict:
     scores = {}
     models_found   = []
     models_missing = []
+    
     for target, prob in raw_scores.items():
         scores[target] = {
             "probability": prob,
