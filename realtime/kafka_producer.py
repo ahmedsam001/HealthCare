@@ -21,36 +21,55 @@ from config import KAFKA_BOOTSTRAP_SERVERS, KAFKA_TOPIC
 from event_schema import MedicalEvent, validate_event
 
 
+import threading
+
 # ---------------------------------------------------------------------------
-# Producer singleton (lazy initialization)
+# Serializer Functions (Explicit for students)
+# ---------------------------------------------------------------------------
+def _serialize_value(value_dict: dict) -> bytes:
+    """Convert a dictionary to a JSON byte string."""
+    json_string = json.dumps(value_dict)
+    return json_string.encode("utf-8")
+
+def _serialize_key(key_string: str) -> bytes:
+    """Convert a string key to a byte string."""
+    if key_string is None:
+        return None
+    return key_string.encode("utf-8")
+
+
+# ---------------------------------------------------------------------------
+# Producer singleton (lazy initialization with thread safety)
 # ---------------------------------------------------------------------------
 
 _producer = None
-
+_producer_lock = threading.Lock()
 
 def _get_producer():
-    """Lazily create and return the Kafka producer (singleton)."""
+    """Lazily create and return the Kafka producer in a thread-safe way."""
     global _producer
-    if _producer is None:
-        try:
-            from kafka import KafkaProducer
-        except ImportError:
-            raise ImportError(
-                "kafka-python is not installed. "
-                "Run: pip install kafka-python"
-            )
+    
+    with _producer_lock:
+        if _producer is None:
+            try:
+                from kafka import KafkaProducer
+            except ImportError:
+                raise ImportError(
+                    "kafka-python is not installed. "
+                    "Run: pip install kafka-python"
+                )
 
-        _producer = KafkaProducer(
-            bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-            value_serializer=lambda v: json.dumps(v).encode("utf-8"),
-            key_serializer=lambda k: k.encode("utf-8") if k else None,
-            # Reliability settings
-            acks="all",                 # wait for all in-sync replicas
-            retries=3,
-            request_timeout_ms=30_000,
-            # Allow up to 64 KB messages (large payloads are rare in medical events)
-            max_request_size=65_536,
-        )
+            _producer = KafkaProducer(
+                bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+                value_serializer=_serialize_value,
+                key_serializer=_serialize_key,
+                # Reliability settings
+                acks="all",                 # wait for all in-sync replicas
+                retries=3,
+                request_timeout_ms=30_000,
+                # Allow up to 64 KB messages (large payloads are rare in medical events)
+                max_request_size=65_536,
+            )
     return _producer
 
 
@@ -97,40 +116,35 @@ def produce_event(event: MedicalEvent, *, validate: bool = True) -> bool:
         return False
 
 
-def produce_event_async(event: MedicalEvent, *, validate: bool = True,
-                        on_success=None, on_error=None) -> None:
+def produce_event_async(event: MedicalEvent, *, validate: bool = True) -> None:
     """
-    Non-blocking publish. Callbacks are optional.
-    on_success(record_metadata) / on_error(exception)
+    Non-blocking publish. Errors are just printed to the console.
+    This is simpler for students to understand than nested callbacks.
     """
     if validate:
         event = validate_event(event, fill_defaults=True)
 
     event_dict = event.to_dict()
-
-    def _success(meta):
-        if on_success:
-            on_success(meta)
-
-    def _error(exc):
-        print(f"[Kafka ERROR] {exc}")
-        if on_error:
-            on_error(exc)
-
-    _get_producer().send(
-        topic=KAFKA_TOPIC,
-        key=event.patient_id,
-        value=event_dict,
-    ).add_callback(_success).add_errback(_error)
+    producer = _get_producer()
+    
+    try:
+        producer.send(
+            topic=KAFKA_TOPIC,
+            key=event.patient_id,
+            value=event_dict,
+        )
+    except Exception as exc:
+        print(f"[Kafka ERROR Async] {exc}")
 
 
 def close_producer() -> None:
     """Flush and close the Kafka producer (call on shutdown)."""
     global _producer
-    if _producer is not None:
-        _producer.flush()
-        _producer.close()
-        _producer = None
+    with _producer_lock:
+        if _producer is not None:
+            _producer.flush()
+            _producer.close()
+            _producer = None
 
 
 def test_connectivity() -> bool:

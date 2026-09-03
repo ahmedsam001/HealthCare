@@ -80,9 +80,14 @@ def apply_age_safety(df: pd.DataFrame) -> pd.DataFrame:
     """If AGE_AT_INDEX > 200, divide by 365.25 (day→year conversion)."""
     if "AGE_AT_INDEX" in df.columns:
         df = df.copy()
-        df["AGE_AT_INDEX"] = df["AGE_AT_INDEX"].apply(
-            lambda x: x / 365.25 if pd.notnull(x) and x > 200 else x
-        )
+        # Explicit loop without lambda for student readability
+        new_ages = []
+        for age in df["AGE_AT_INDEX"]:
+            if pd.notnull(age) and age > 200:
+                new_ages.append(age / 365.25)
+            else:
+                new_ages.append(age)
+        df["AGE_AT_INDEX"] = new_ages
     return df
 
 
@@ -118,7 +123,10 @@ def load_model(target_name: str):
 
 def models_available() -> dict[str, bool]:
     """Return {target: True/False} showing which model files exist."""
-    return {t: model_path(t).exists() for t in TARGETS}
+    results = {}
+    for t in TARGETS:
+        results[t] = model_path(t).exists()
+    return results
 
 
 # ---------------------------------------------------------------------------
@@ -166,7 +174,10 @@ def run_all_targets(feature_dict: dict) -> dict[str, Optional[float]]:
     Run inference for all 5 targets.
     Returns {target_name: probability_or_None}.
     """
-    return {t: run_inference(t, feature_dict) for t in TARGETS}
+    results = {}
+    for target in TARGETS:
+        results[target] = run_inference(target, feature_dict)
+    return results
 
 
 # ---------------------------------------------------------------------------

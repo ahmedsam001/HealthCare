@@ -558,93 +558,135 @@ def get_timeline(patient_id: str, limit: int = 200, cache_version: int = 0) -> p
     """
     conn = _get_conn()
     frames = []
-    try:
-        def safe_query(sql, params=()):
-            try:
-                return _query_df(conn, sql, params)
-            except Exception:
-                return pd.DataFrame()
-
-        g = SCHEMA_GOLD
-
-        frames.append(safe_query(f"""
+    
+    # Define all queries clearly in a list of (SQL, params)
+    g = SCHEMA_GOLD
+    queries = [
+        # --- HISTORICAL (GOLD) ---
+        (f"""
             SELECT ENCOUNTER_DATE AS EVENT_DATE, 'ENCOUNTER' AS EVENT_TYPE,
                    DESCRIPTION, COALESCE(REASONDESCRIPTION,'') AS DETAIL,
                    'historical' AS SOURCE, ENCOUNTER_ID
             FROM {g}.ENCOUNTERS_GOLD WHERE PATIENT_ID = %s
-        """, (patient_id,)))
-
-        frames.append(safe_query(f"""
+        """, (patient_id,)),
+        
+        (f"""
             SELECT START_DATE AS EVENT_DATE, 'CONDITION' AS EVENT_TYPE,
                    DESCRIPTION, COALESCE(CODE,'') AS DETAIL,
                    'historical' AS SOURCE, NULL AS ENCOUNTER_ID
             FROM {g}.CONDITIONS_GOLD WHERE PATIENT_ID = %s
-        """, (patient_id,)))
-
-        frames.append(safe_query(f"""
+        """, (patient_id,)),
+        
+        (f"""
             SELECT START_DATE AS EVENT_DATE, 'MEDICATION' AS EVENT_TYPE,
                    DESCRIPTION, COALESCE(REASONDESCRIPTION,'') AS DETAIL,
                    'historical' AS SOURCE, NULL AS ENCOUNTER_ID
             FROM {g}.MEDICATIONS_GOLD WHERE PATIENT_ID = %s
-        """, (patient_id,)))
-
-        frames.append(safe_query(f"""
+        """, (patient_id,)),
+        
+        (f"""
             SELECT OBSERVATION_DATE AS EVENT_DATE, 'OBSERVATION' AS EVENT_TYPE,
                    'Vital Signs Reading' AS DESCRIPTION, '' AS DETAIL,
                    'historical' AS SOURCE, ENCOUNTER_ID
             FROM {g}.OBSERVATIONS_GOLD WHERE PATIENT_ID = %s
-        """, (patient_id,)))
+        """, (patient_id,)),
+        
+        (f"""
+            SELECT PROCEDURE_DATE AS EVENT_DATE, 'PROCEDURE' AS EVENT_TYPE,
+                   DESCRIPTION, COALESCE(REASONDESCRIPTION,'') AS DETAIL,
+                   'historical' AS SOURCE, ENCOUNTER_ID
+            FROM {g}.PROCEDURES_GOLD WHERE PATIENT_ID = %s
+        """, (patient_id,)),
+        
+        (f"""
+            SELECT IMMUNIZATION_DATE AS EVENT_DATE, 'IMMUNIZATION' AS EVENT_TYPE,
+                   DESCRIPTION, COALESCE(CODE,'') AS DETAIL,
+                   'historical' AS SOURCE, ENCOUNTER_ID
+            FROM {g}.IMMUNIZATIONS_GOLD WHERE PATIENT_ID = %s
+        """, (patient_id,)),
+        
+        (f"""
+            SELECT START_DATE AS EVENT_DATE, 'ALLERGY' AS EVENT_TYPE,
+                   DESCRIPTION, COALESCE(CODE,'') AS DETAIL,
+                   'historical' AS SOURCE, ENCOUNTER_ID
+            FROM {g}.ALLERGIES_GOLD WHERE PATIENT_ID = %s
+        """, (patient_id,)),
+        
+        (f"""
+            SELECT START_DATE AS EVENT_DATE, 'CAREPLAN' AS EVENT_TYPE,
+                   DESCRIPTION, COALESCE(REASONDESCRIPTION,'') AS DETAIL,
+                   'historical' AS SOURCE, ENCOUNTER_ID
+            FROM {g}.CAREPLANS_GOLD WHERE PATIENT_ID = %s
+        """, (patient_id,)),
 
-        frames.append(safe_query("""
+        # --- REALTIME ---
+        ("""
             SELECT ENCOUNTER_DATE AS EVENT_DATE, 'ENCOUNTER' AS EVENT_TYPE,
                    DESCRIPTION, COALESCE(REASONDESCRIPTION,'') AS DETAIL,
                    'realtime' AS SOURCE, ENCOUNTER_ID
             FROM REALTIME.RT_ENCOUNTERS WHERE PATIENT_ID = %s
-        """, (patient_id,)))
-
-        frames.append(safe_query("""
+        """, (patient_id,)),
+        
+        ("""
             SELECT START_DATE AS EVENT_DATE, 'CONDITION' AS EVENT_TYPE,
                    DESCRIPTION, COALESCE(CODE,'') AS DETAIL,
                    'realtime' AS SOURCE, ENCOUNTER_ID
             FROM REALTIME.RT_CONDITIONS WHERE PATIENT_ID = %s
-        """, (patient_id,)))
-
-        frames.append(safe_query("""
+        """, (patient_id,)),
+        
+        ("""
             SELECT START_DATE AS EVENT_DATE, 'MEDICATION' AS EVENT_TYPE,
                    DESCRIPTION, COALESCE(REASONDESCRIPTION,'') AS DETAIL,
                    'realtime' AS SOURCE, ENCOUNTER_ID
             FROM REALTIME.RT_MEDICATIONS WHERE PATIENT_ID = %s
-        """, (patient_id,)))
-
-        frames.append(safe_query("""
+        """, (patient_id,)),
+        
+        ("""
             SELECT OBSERVATION_DATE AS EVENT_DATE, 'OBSERVATION' AS EVENT_TYPE,
                    DESCRIPTION,
                    COALESCE(CAST(VALUE_NUMERIC AS VARCHAR), VALUE_TEXT, '') AS DETAIL,
                    'realtime' AS SOURCE, ENCOUNTER_ID
             FROM REALTIME.RT_OBSERVATIONS WHERE PATIENT_ID = %s
-        """, (patient_id,)))
-
-        frames.append(safe_query("""
+        """, (patient_id,)),
+        
+        ("""
             SELECT PROCEDURE_DATE AS EVENT_DATE, 'PROCEDURE' AS EVENT_TYPE,
                    DESCRIPTION, COALESCE(REASONDESCRIPTION,'') AS DETAIL,
                    'realtime' AS SOURCE, ENCOUNTER_ID
             FROM REALTIME.RT_PROCEDURES WHERE PATIENT_ID = %s
-        """, (patient_id,)))
-
-        frames.append(safe_query("""
+        """, (patient_id,)),
+        
+        ("""
             SELECT IMMUNIZATION_DATE AS EVENT_DATE, 'IMMUNIZATION' AS EVENT_TYPE,
                    DESCRIPTION, COALESCE(CODE,'') AS DETAIL,
                    'realtime' AS SOURCE, ENCOUNTER_ID
             FROM REALTIME.RT_IMMUNIZATIONS WHERE PATIENT_ID = %s
-        """, (patient_id,)))
-
-        frames.append(safe_query("""
+        """, (patient_id,)),
+        
+        ("""
             SELECT START_DATE AS EVENT_DATE, 'ALLERGY' AS EVENT_TYPE,
                    DESCRIPTION, COALESCE(CODE,'') AS DETAIL,
                    'realtime' AS SOURCE, ENCOUNTER_ID
             FROM REALTIME.RT_ALLERGIES WHERE PATIENT_ID = %s
-        """, (patient_id,)))
+        """, (patient_id,)),
+        
+        ("""
+            SELECT START_DATE AS EVENT_DATE, 'CAREPLAN' AS EVENT_TYPE,
+                   DESCRIPTION, COALESCE(REASONDESCRIPTION,'') AS DETAIL,
+                   'realtime' AS SOURCE, ENCOUNTER_ID
+            FROM REALTIME.RT_CAREPLANS WHERE PATIENT_ID = %s
+        """, (patient_id,)),
+    ]
 
+    try:
+        # Explicit loop over each query
+        for sql, params in queries:
+            try:
+                df = _query_df(conn, sql, params)
+                frames.append(df)
+            except Exception as e:
+                # If a specific table fails (e.g. doesn't exist yet), just skip it
+                pass
     finally:
         conn.close()
 

@@ -286,39 +286,72 @@ def _parse_careplans(df: DataFrame) -> DataFrame:
     ).filter(col("CODE").isNotNull())
 
 
-PARSERS = {
-    "ENCOUNTER":    (_parse_encounters,   "RT_ENCOUNTERS"),
-    "OBSERVATION":  (_parse_observations, "RT_OBSERVATIONS"),
-    "CONDITION":    (_parse_conditions,   "RT_CONDITIONS"),
-    "MEDICATION":   (_parse_medications,  "RT_MEDICATIONS"),
-    "PROCEDURE":    (_parse_procedures,   "RT_PROCEDURES"),
-    "IMMUNIZATION": (_parse_immunizations,"RT_IMMUNIZATIONS"),
-    "ALLERGY":      (_parse_allergies,    "RT_ALLERGIES"),
-    "CAREPLAN":     (_parse_careplans,    "RT_CAREPLANS"),
-}
-
-
-# ---------------------------------------------------------------------------
-# foreachBatch handler
-# ---------------------------------------------------------------------------
-
 def _process_batch(batch_df: DataFrame, batch_id: int) -> None:
     """
     Process one micro-batch from Kafka.
     Splits by event_type and writes each subset to the matching RT_ table.
+    Explicitly checks each supported event type.
     """
     if batch_df.isEmpty():
         return
 
     print(f"[Streaming] Processing batch_id={batch_id} ...")
 
-    for event_type, (parser_fn, table_name) in PARSERS.items():
-        subset = batch_df.filter(col("event_type") == event_type)
-        parsed = parser_fn(subset)
-        count  = parsed.count()
-        if count > 0:
-            print(f"  → {event_type}: {count} rows → {table_name}")
-            _write_to_snowflake(parsed, table_name)
+    # 1. Encounters
+    subset = batch_df.filter(col("event_type") == "ENCOUNTER")
+    if subset.count() > 0:
+        parsed = _parse_encounters(subset)
+        print(f"  → ENCOUNTER: {parsed.count()} rows → RT_ENCOUNTERS")
+        _write_to_snowflake(parsed, "RT_ENCOUNTERS")
+
+    # 2. Observations
+    subset = batch_df.filter(col("event_type") == "OBSERVATION")
+    if subset.count() > 0:
+        parsed = _parse_observations(subset)
+        print(f"  → OBSERVATION: {parsed.count()} rows → RT_OBSERVATIONS")
+        _write_to_snowflake(parsed, "RT_OBSERVATIONS")
+
+    # 3. Conditions
+    subset = batch_df.filter(col("event_type") == "CONDITION")
+    if subset.count() > 0:
+        parsed = _parse_conditions(subset)
+        print(f"  → CONDITION: {parsed.count()} rows → RT_CONDITIONS")
+        _write_to_snowflake(parsed, "RT_CONDITIONS")
+
+    # 4. Medications
+    subset = batch_df.filter(col("event_type") == "MEDICATION")
+    if subset.count() > 0:
+        parsed = _parse_medications(subset)
+        print(f"  → MEDICATION: {parsed.count()} rows → RT_MEDICATIONS")
+        _write_to_snowflake(parsed, "RT_MEDICATIONS")
+
+    # 5. Procedures
+    subset = batch_df.filter(col("event_type") == "PROCEDURE")
+    if subset.count() > 0:
+        parsed = _parse_procedures(subset)
+        print(f"  → PROCEDURE: {parsed.count()} rows → RT_PROCEDURES")
+        _write_to_snowflake(parsed, "RT_PROCEDURES")
+
+    # 6. Immunizations
+    subset = batch_df.filter(col("event_type") == "IMMUNIZATION")
+    if subset.count() > 0:
+        parsed = _parse_immunizations(subset)
+        print(f"  → IMMUNIZATION: {parsed.count()} rows → RT_IMMUNIZATIONS")
+        _write_to_snowflake(parsed, "RT_IMMUNIZATIONS")
+
+    # 7. Allergies
+    subset = batch_df.filter(col("event_type") == "ALLERGY")
+    if subset.count() > 0:
+        parsed = _parse_allergies(subset)
+        print(f"  → ALLERGY: {parsed.count()} rows → RT_ALLERGIES")
+        _write_to_snowflake(parsed, "RT_ALLERGIES")
+
+    # 8. Careplans
+    subset = batch_df.filter(col("event_type") == "CAREPLAN")
+    if subset.count() > 0:
+        parsed = _parse_careplans(subset)
+        print(f"  → CAREPLAN: {parsed.count()} rows → RT_CAREPLANS")
+        _write_to_snowflake(parsed, "RT_CAREPLANS")
 
     print(f"[Streaming] Batch {batch_id} complete.")
 

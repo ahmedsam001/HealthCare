@@ -848,17 +848,18 @@ def render_live_event(patient_id: str):
         persistence_confirmed = False
         poll_status = st.empty()
 
-        deadline = _time.monotonic() + _PERSISTENCE_TIMEOUT_S
-        attempt  = 0
-        while _time.monotonic() < deadline:
-            attempt += 1
+        # Simple student-friendly polling loop
+        max_attempts = int(_PERSISTENCE_TIMEOUT_S / _PERSISTENCE_POLL_S)
+        
+        for attempt in range(1, max_attempts + 1):
             if _event_persisted_in_snowflake(event.event_id, event.event_type):
                 persistence_confirmed = True
                 break
+                
             elapsed = attempt * _PERSISTENCE_POLL_S
             poll_status.info(
                 f"⏳ Waiting for REALTIME persistence "
-                f"(attempt {attempt}, ~{elapsed:.0f}s elapsed of {_PERSISTENCE_TIMEOUT_S}s max)…"
+                f"(attempt {attempt} of {max_attempts}, ~{elapsed:.0f}s elapsed)…"
             )
             _time.sleep(_PERSISTENCE_POLL_S)
 

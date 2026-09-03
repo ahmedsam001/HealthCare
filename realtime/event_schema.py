@@ -1,18 +1,3 @@
-"""
-# STEP 2: Define a standardized schema for new medical events.
-#
-# Every new medical event uses a common envelope:
-#
-#   event_id        : UUID (auto-generated if not supplied)
-#   patient_id      : must match an existing PATIENTS_GOLD.PATIENT_ID
-#   event_type      : one of SUPPORTED_EVENT_TYPES
-#   event_timestamp : ISO-8601 string
-#   payload         : dict — fields depend on event_type
-#
-# Payload field requirements match the corresponding Gold table columns
-# (from 03_Gold.ipynb).  Only the minimum required fields are enforced;
-# extra fields are passed through unchanged.
-"""
 
 from __future__ import annotations
 
@@ -46,42 +31,42 @@ REQUIRED_PAYLOAD_FIELDS: dict[str, list[str]] = {
     "ENCOUNTER": [
         "CODE",
         "DESCRIPTION",
-        "ENCOUNTER_DATE",        # ISO-8601 string, e.g. "2026-09-01T10:30:00"
+        "ENCOUNTER_DATE",       
     ],
     "OBSERVATION": [
         "DESCRIPTION",           # measurement name, e.g. "Body Weight"
-        "OBSERVATION_DATE",      # ISO-8601 date string
+        "OBSERVATION_DATE",    
         # At least one of VALUE_NUMERIC or VALUE_TEXT must be non-null
     ],
     "CONDITION": [
         "CODE",
         "DESCRIPTION",
-        "START_DATE",            # ISO-8601
+        "START_DATE",           
     ],
     "MEDICATION": [
         "CODE",
         "DESCRIPTION",
-        "START_DATE",            # ISO-8601
+        "START_DATE",           
     ],
     "PROCEDURE": [
         "CODE",
         "DESCRIPTION",
-        "PROCEDURE_DATE",        # ISO-8601
+        "PROCEDURE_DATE",       
     ],
     "IMMUNIZATION": [
         "CODE",
         "DESCRIPTION",
-        "IMMUNIZATION_DATE",     # ISO-8601
+        "IMMUNIZATION_DATE",    
     ],
     "ALLERGY": [
         "CODE",
         "DESCRIPTION",
-        "START_DATE",            # ISO-8601
+        "START_DATE",           
     ],
     "CAREPLAN": [
         "CODE",
         "DESCRIPTION",
-        "START_DATE",            # ISO-8601
+        "START_DATE",           
     ],
 }
 
@@ -136,27 +121,21 @@ OPTIONAL_PAYLOAD_DEFAULTS: dict[str, dict[str, Any]] = {
 
 @dataclass
 class MedicalEvent:
-    """
-    Standardized envelope for a new real-time medical event.
+    """Standardized envelope for a new real-time medical event."""
+    patient_id: str
+    event_type: str
+    payload: dict[str, Any]
+    event_id: str = ""
+    event_timestamp: str = ""
 
-    Usage
-    -----
-    event = MedicalEvent(
-        patient_id="some-uuid",
-        event_type="OBSERVATION",
-        payload={"DESCRIPTION": "Body Weight", "VALUE_NUMERIC": 72.5,
-                 "OBSERVATION_DATE": "2026-09-01"},
-    )
-    validated = validate_event(event)   # raises ValidationError on bad input
-    msg = event.to_dict()               # ready to publish to Kafka
-    """
-    patient_id:      str
-    event_type:      str
-    payload:         dict[str, Any]
-    event_id:        str   = field(default_factory=lambda: str(uuid.uuid4()))
-    event_timestamp: str   = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    def __post_init__(self):
+        # Automatically generate an ID if not provided
+        if not self.event_id:
+            self.event_id = str(uuid.uuid4())
+            
+        # Automatically set the current time if not provided
+        if not self.event_timestamp:
+            self.event_timestamp = datetime.now(timezone.utc).isoformat()
 
     def to_dict(self) -> dict:
         """Serialize the event to a plain dict (JSON-serializable)."""
@@ -172,12 +151,11 @@ class MedicalEvent:
     def from_dict(cls, d: dict) -> "MedicalEvent":
         """Deserialize from a plain dict (e.g. from a Kafka message)."""
         return cls(
-            event_id        = d.get("event_id", str(uuid.uuid4())),
             patient_id      = d["patient_id"],
             event_type      = d["event_type"],
-            event_timestamp = d.get("event_timestamp",
-                                    datetime.now(timezone.utc).isoformat()),
             payload         = d.get("payload", {}),
+            event_id        = d.get("event_id", ""),
+            event_timestamp = d.get("event_timestamp", ""),
         )
 
 
@@ -242,11 +220,21 @@ def validate_event(event: MedicalEvent, *, fill_defaults: bool = True) -> Medica
     if fill_defaults:
         defaults = OPTIONAL_PAYLOAD_DEFAULTS.get(event.event_type, {})
         for key, default_value in defaults.items():
+            
+            # If the key is missing or explicitly set to None, we need to fill it
             if key not in event.payload or event.payload[key] is None:
-                if key == "ENCOUNTER_ID" and default_value is None:
-                    event.payload[key] = None   # stays None — writer handles
-                elif key in ("CAREPLAN_ID",) and default_value is None:
+                
+                # Special Case 1: Encounter ID
+                if key == "ENCOUNTER_ID":
+                    # We leave it as None so the database writer can handle it
+                    event.payload[key] = None
+                    
+                # Special Case 2: Careplan ID
+                elif key == "CAREPLAN_ID":
+                    # Generate a new unique ID for the careplan
                     event.payload[key] = str(uuid.uuid4())
+                    
+                # Standard Case
                 else:
                     event.payload[key] = default_value
 
