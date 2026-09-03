@@ -21,14 +21,10 @@
 # The output dict has exactly the keys in ml_contract.ALL_FEATURE_COLS.
 """
 
-from __future__ import annotations
-
-from datetime import date, datetime, timezone
-from typing import Optional
-
 import numpy as np
 import pandas as pd
 import snowflake.connector
+from datetime import date, datetime, timezone
 
 from config import snowflake_connect_kwargs, SCHEMA_GOLD
 from ml_contract import ALL_FEATURE_COLS, NUMERIC_COLS_FULL, CATEGORICAL_COLS
@@ -38,11 +34,11 @@ from ml_contract import ALL_FEATURE_COLS, NUMERIC_COLS_FULL, CATEGORICAL_COLS
 # Helper
 # ---------------------------------------------------------------------------
 
-def _get_conn() -> snowflake.connector.SnowflakeConnection:
+def _get_conn():
     return snowflake.connector.connect(**snowflake_connect_kwargs())
 
 
-def _scalar(conn, sql: str, params=()) -> Optional[float]:
+def _scalar(conn, sql, params=()):
     """Execute SQL and return the first column of the first row (or None)."""
     cur = conn.cursor()
     cur.execute(sql, params)
@@ -51,7 +47,7 @@ def _scalar(conn, sql: str, params=()) -> Optional[float]:
     return row[0] if row and row[0] is not None else None
 
 
-def _int_scalar(conn, sql: str, params=()) -> int:
+def _int_scalar(conn, sql, params=()):
     val = _scalar(conn, sql, params)
     return int(val) if val is not None else 0
 
@@ -83,7 +79,7 @@ FEATURE_TO_MEASUREMENT = {
 }
 
 
-def _sum_count(conn, sql: str, params=()) -> tuple[float, int]:
+def _sum_count(conn, sql, params=()):
     """Execute SQL that returns (SUM, COUNT) and return as (float, int)."""
     cur = conn.cursor()
     cur.execute(sql, params)
@@ -96,9 +92,7 @@ def _sum_count(conn, sql: str, params=()) -> tuple[float, int]:
     return s, c
 
 
-def _avg_from_gold_and_rt(
-    conn, patient_id: str, feature_name: str
-) -> Optional[float]:
+def _avg_from_gold_and_rt(conn, patient_id, feature_name):
     """
     Compute the TRUE average of a vital measurement across OBSERVATIONS_GOLD
     (pivoted columns) and RT_OBSERVATIONS (long format).
@@ -138,7 +132,7 @@ def _avg_from_gold_and_rt(
     return (hist_sum + rt_sum) / total_count
 
 
-def _has_reading_flag(conn, patient_id: str, measurement: str) -> int:
+def _has_reading_flag(conn, patient_id, measurement):
     """Return 1 if ANY numeric reading exists for this measurement, else 0."""
     gold_col = MEASUREMENT_TO_GOLD_COL.get(measurement)
 
